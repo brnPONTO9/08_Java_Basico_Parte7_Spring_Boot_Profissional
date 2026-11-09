@@ -1,0 +1,9 @@
+# Exercício 42: a API passa a ser SOMENTE Resource Server. Quem emite o access token é o Keycloak (ou outro OIDC).
+# Remova o AuthController/JwtEncoder locais (ex. 14): a API não assina mais tokens, só valida.
+spring:
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${OIDC_ISSUER_URI:http://localhost:8081/realms/pedidos}
+          audiences: api-pedidos

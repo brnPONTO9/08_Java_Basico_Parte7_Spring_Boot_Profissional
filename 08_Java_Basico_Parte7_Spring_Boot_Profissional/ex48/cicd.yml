@@ -1,0 +1,49 @@
+# Exercício 48: build, testes, imagem, registry, homologação automática e produção com aprovação manual.
+# Salve em .github/workflows/cicd.yml. Em Settings > Environments crie "homolog" e "producao"
+# e, em "producao", marque "Required reviewers" (é isso que gera a aprovação).
+name: CI-CD
+on:
+  push:
+    branches: [ main ]
+env:
+  IMAGEM: ghcr.io/${{ github.repository_owner }}/api-pedidos
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: '17', cache: maven }
+      - run: ./mvnw -B verify
+
+  imagem:
+    needs: build-test
+    runs-on: ubuntu-latest
+    permissions: { contents: read, packages: write }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with: { registry: ghcr.io, username: "${{ github.actor }}", password: "${{ secrets.GITHUB_TOKEN }}" }
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGEM }}:${{ github.sha }}
+
+  homolog:
+    needs: imagem
+    runs-on: ubuntu-latest
+    environment: homolog
+    steps:
+      - name: Deploy em homologação
+        run: echo "deploy ${{ env.IMAGEM }}:${{ github.sha }} em homolog (substitua pelo comando do seu provedor)"
+      - name: Smoke test
+        run: echo "curl -f https://homolog.exemplo/actuator/health"
+
+  producao:
+    needs: homolog
+    runs-on: ubuntu-latest
+    environment: producao        # exige aprovação manual configurada no ambiente
+    steps:
+      - name: Deploy em produção
+        run: echo "deploy ${{ env.IMAGEM }}:${{ github.sha }} em producao (mesma imagem testada em homolog)"
